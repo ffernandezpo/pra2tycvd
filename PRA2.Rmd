@@ -1,0 +1,555 @@
+---
+title: "PRA2"
+author: "Francisco Fernández Poyato y Javier Gallego Fernández"
+date: "21/5/2022"
+output: pdf_document
+lang: es
+toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\newpage
+
+## 1. Descripción del dataset. ¿Por qué es importante y qué pregunta/problema pretende responder?
+
+El objetivo principal de nuestro estudio va a ser llevar a cabo un análisis detallado de todas las características químicas de los vinos, así como ver cómo estas están relacionadas con la calidad del mismo. 
+
+Los análisis que se van a proponer sobre este dataset serán, en primer lugar un análisis descriptivo de las variables, en el que se representará graficamente cómo están distribuidas, así como un estudio de las correlaciones que pueda haber entre ellas. 
+
+También plantearemos el estudio de la normalidad y homocedasticidad de nuestras variables, para tener claro que técnicas de análisis de datos podremos utilizar. 
+
+Se planteará una regresión lineal para estudiar cuál es la relación entre todos nuestros parámetros y la variable objeto de estudio, que para nosotros será la calidad del vino. Además, realizaremos contrastes de hipótesis dividiendo nuestra población para poder sacar conclusiones de la relación de los parámetros químicos con la calidad del vino
+
+
+
+## 2. Integración y selección de los datos de interés a analizar. 
+
+En nuestro caso, hemos seleccionado un dataset de Kaggle en el que están recogidos datos relacionados con las características químicas de los  [vinos tintos](https://www.kaggle.com/datasets/uciml/red-wine-quality-cortez-et-al-2009).
+
+En este caso no va a ser necesario unir datasets ni seleccionar conjuntos de entrenamiento ni de test, ya que eso lo haremos directamente con nuestro conjunto de datos que vamos a utilizar. 
+
+
+
+
+```{r}
+datosvino =read.csv('winequality-red.csv', sep = ',')
+```
+
+
+```{r}
+sapply(datosvino, function(x) sum(is.na(x)))
+```
+
+
+
+
+
+```{r}
+shapiro.test(datosvino$fixed.acidity)
+```
+
+```{r}
+summary(datosvino)
+```
+
+```{r}
+str(datosvino)
+```
+
+
+
+
+## 3. Limpieza de datos  
+
+Etapa importante dentro de un análisis de datos calidad datos calidad modelo...
+
+
+### 3.1 ¿Los datos contiene ceros o elementos vacíos? Gestiona cada uno de estos casos 
+
+En primer lugar estudiaremos si en nuestro conjunto de datos existen elementos vacíos. Para ello vamos a estudiar si existe algún registro de alguna variable que esté sin información 
+
+Para ello utilizaremos la siguiente función 
+
+```{r}
+sapply(datosvino, function(x) sum(is.na(x)))
+```
+
+Como se puede observar, no tendremos ningún registro en ninguna variable que tenga valores nulos, por lo que no tendríamos que descartar ningún registro ni tendríamos que aplicar técnicas de imputación de valores vacíos 
+
+A continuación, pasaremos a estudiar la existencia de posibles valores registrados como 0 y veremos si tienen sentido dentro de la variable o se ha guardado así para representar que no se tiene información de ese registro. 
+
+Observando las variables y todos los rangos que tiene esta, podemos ver que solamente la variable citric.acid tiene al 0 dentro del rango de posibles valores. Sin embargo, haciendo un estudio de los posibles valores que puede tener esta variable, concluimos que es un valor posible para un vino en esta variable, por lo que no descartaremos aquellos registros que tengan 0 como valor en citric.acid
+
+
+### 3.2 Registros duplicados
+
+Otro de los análisis previos que se deben realizar con anterioridad a la implementación de técnicas de análisis de datos es el estudio de los posibles valores duplicados que puede haber en el conjunto de datos. En este conjunto de datos no tenemos una variable que actúe como identificador, por lo que no tendremos una clave primaria predefinida, sin embargo, al ser 12 variables numéricas, entendemos que es prácticamente imposible que un vino tenga exactamente los mismos valores para estos 12 campos, por lo que si tenemos algún caso que comparta los mismos valores para todas las variables, lo identificaremos como duplicado
+
+
+Para ello, en primer lugar vamos a estudiar la existencia de estos posibles casos y también cuántos registros se verán afectados
+
+```{r}
+sum(duplicated(datosvino))
+```
+
+Como podemos observar, tendremos 240 registros duplicados. A continuación, pasaremos a seleccionar solamente aquellos registros que no se repiten en el conjunto de datos. 
+
+
+```{r}
+datosvino = unique(datosvino)
+```
+
+
+### 3.3 Identifica y gestiona los valores extremos
+
+
+
+Para poder identificar cuáles son los valores extremos de las variables y ver si tiene sentido dentro de nuestro conjunto de datos, pasaremos a realizar un diagrama de caja y bigotes para ver que registros nos generan valores **outliers**.
+
+
+```{r}
+boxplot(datosvino)
+```
+
+
+
+
+```{r}
+
+```
+
+
+```{r, fig.width=20,fig.height=10}
+par(mfrow=c(4,3))
+for(i in 1:ncol(datosvino)) {
+boxplot(datosvino[,i], main = colnames(datosvino)[i])
+}
+
+```
+
+Haciendo un estudio de los posibles valores que tienen todas estas variables en los vinos, concluimos que no hay ningún valor que podamos descartar, aunque este sea muy elevado y esté lejano a la gran mayoría de los valores de las variables, ya que no tenemos evidencia de que un vino no pueda tener esos valores. Por poner un ejemplo, el caso que más nos ha llamado la atención es el del total.sulfur.dioxide, ya que tiene valores cercanos a los 250 mg/L, muy lejanos del grueso de la distribución de la variable, sin embargo, hemos encontrado la siguiente información relativa a esta variable, y es que los valores pueden llegar a ser de 300  mg / L o incluso 400  mg / L en el caso de determinadas denominaciones geográficas de vinos dulces.
+
+
+## 4. Análisis de los datos. 
+
+### 4.1 Análisis descriptivo del conjunto de datos
+
+En primer lugar, para llevar a cabo nuestro análisis descriptivo visualizaremos un histograma de todas las variables junto con la gráfica de su distribución, para poder ver como se comporta la variable
+
+
+```{r, fig.width=20,fig.height=10 }
+par(mfrow=c(4,3))
+for(i in 1:ncol(datosvino)) {
+hist(datosvino[,i], main = colnames(datosvino)[i], probability = TRUE)
+lines(density(datosvino[,i]),
+ lwd = 2, # thickness of line
+ col = "red")
+}
+
+```
+
+
+Observando estas gráficas, podríamos decir que las variables densidad y pH tendrán una distribución similar a una normal, aunque nos aseguraremos posteriormente mediante los test de normalidad. 
+
+Una vez vistas las distribuciones de las variables, pasaremos a estudiar las correlaciones que tendrán nuestras variables entre ellas, para así poder ver posibles relaciones y comportamientos similares, poniendo el foco en la variable objeto de estudio que será la calidad del vino. 
+
+
+
+```{r, fig.width=20,fig.height=10}
+matrixcor = cor(datosvino)
+corrplot::corrplot(matrixcor, method = "number")
+```
+
+Observando las correlaciones obtenidas entre las variables, destacamos que la variable fixed.acidity estará correlacionada con las variables ph (correlación negativa), teniendo esto sentido ya que un menor pH estará relacionado con una mayor acidez, y densidad (correlación positiva). También cabe destacar que estarán relacionados los valores de sulfuro libre y sulfuro total, observando que es algo que tiene sentido debido a que los sulfuros libres están incluidos en el sulfuro total. 
+
+Con respecto a la variable objeto de estudio, observamos que la variable alcohol será la que esté más relacionada con la calidad del vino, aunque no es muy elevada (0.48)
+
+También cabe destacar que en la varible calidad, nuestra muestra no va a estar balanceada, concentrándose la gran mayoría de los valores entre el rango de 5 y 6
+
+```{r}
+hist(datosvino$quality, main = 'Calidad de los vinos', col = "red4")
+```
+
+
+
+
+### 4.2 Selección de los grupos de datos que se quieren analizar/comparar 
+
+
+En nuestro caso hemos considerado interesante crear tres variables categóricas para dividir nuestra población y así poder sacar conclusiones en función de las características que tengan los vinos. 
+
+En primer lugar vamos a dividir la muestra en función de la graduación alcohólica que tengan los vinos, creando una variable que sea Alta graduación alcohólica para aquellos registros que estén por encima de la mediana y Baja graduación alcohólica para aquellos registros que estén por debajo de la mediana. Así, tendremos la población dividida en dos y podremos aplicar contrastes de hipótesis para ver si esto afecta o no a la calidad del vino. También haremos lo mismo con la variable pH, donde seguiremos el mismo criterio para dividir la población. 
+
+Por último, también crearemos una variable categórica a partir de la calidad de los vinos, siendo baja cuando la puntuación de este sea 3 o 4, media cuando sea 5 o 6 y alta cuando la puntuación llegue a 7 u 8. 
+
+
+Pasamos ahora a crear estas variables
+
+```{r}
+datosvinocats<-datosvino
+datosvinocats$pHcat <- cut(datosvino$pH,
+                       breaks=c(min(datosvino$pH)-1,median(datosvino$pH), max(datosvino$pH)+1),
+                       labels=c('pH bajo', 'pH alto'))
+
+datosvinocats$alcoholcat <- cut(datosvino$alcohol,
+                       breaks=c(min(datosvino$alcohol)-1,median(datosvino$alcohol), max(datosvino$alcohol)+1),
+                       labels=c('Graduación alcohólica baja', 'Graduación alcohólica alta'))
+
+
+datosvinocats$calidadcat <- cut(datosvino$quality,
+                       breaks=c(2,4,6,9),
+                       labels=c('Calidad baja','Calidad media','Calidad alta'))
+
+```
+
+
+### 4.3 Comprobación de la normalidad y homogeneidad de la varianza.
+
+
+```{r, fig.width=20,fig.height=10}
+library("car")
+par(mfrow=c(4,3))
+for(i in 1:ncol(datosvino)) {
+if (is.numeric(datosvino[,i])){
+
+qqPlot(datosvino[,i], main = colnames(datosvino)[i])}
+}
+
+```
+
+Observando los qqPlot de nuestas variables, podemos deducir que las variables density y pH se pueden comportar como una distribución normal. Aún así, de todas formas a continuación aplicaremos el test de Shapiro-Wilk para comprobar si efectivamente se pueden asumir como distribuciones normales
+
+
+```{r}
+for(i in 1:ncol(datosvino)) {
+if (is.numeric(datosvino[,i])){
+a = shapiro.test(datosvino[,i])
+print(colnames(datosvino)[i])
+print(a)
+}}
+```
+Sin embargo, realizando el test de Shapiro-Wilk a todas nuestras variables, no tendremos ninguna que podamos asumir como variable normal, aunque aquellas variables que introduzcamos posteriormente en el modelo se podrán asumir como tal por el Teorema Central del Límite. 
+
+
+Una vez hemos hecho el estudio de la homocedasticidad, lo haremos a partir de dividir la muestra en función de las variables categóricas que hemos creado. 
+
+```{r}
+datosalcoholbajo<-datosvino[datosvino$alcoholcat=='Graduación alcohólica baja',]
+datosalcoholalto<-datosvino[datosvino$alcoholcat=='Graduación alcohólica alta',]
+datosphbajo<-datosvino[datosvino$pHcat=='pH bajo',]
+datosphalto<-datosvino[datosvino$pHcat=='pH alto',]
+```
+
+
+Aunque no hayamos obtenido normalidad, pasaremos a calcular la homocedasticidad de la variable calidad
+
+```{r}
+library(stats)
+```
+
+(Se dejan comentadas las funciones porque al pasar a pdF genera error, sin embargo en R si que compila correctamente la función, de la que se adjunta la salida como texto)
+
+```{r}
+
+#var.test(datosalcoholalto$quality, datosalcoholbajo$quality)
+```
+	F test to compare two variances
+
+data:  datosalcoholalto$quality and datosalcoholbajo$quality
+F = 1.6884, num df = 640, denom df =
+717, p-value = 1.011e-11
+alternative hypothesis: true ratio of variances is not equal to 1
+95 percent confidence interval:
+ 1.452482 1.964017
+sample estimates:
+ratio of variances 
+          1.688441 
+
+```{r}
+# var.test(datosalcoholalto$pH, datosalcoholbajo$pH)
+```
+F test to compare two variances
+
+data:  datosalcoholalto$pH and datosalcoholbajo$pH
+F = 1.2013, num df = 640, denom df =
+717, p-value = 0.01695
+alternative hypothesis: true ratio of variances is not equal to 1
+95 percent confidence interval:
+ 1.033406 1.397350
+sample estimates:
+ratio of variances 
+          1.201285 
+
+Como podemos observar, en ambos casos obtenemos que no se puede asumir igualdad de varianzas. 
+
+
+
+
+
+### 4.4 Aplicación de pruebas estadísticas para comparar los grupos de datos.
+
+#### 4.4.1 Regresión lineal múltiple
+
+En primer lugar, comenzaremos realizando una regresión lineal múltiple para intentar predecir la calidad del vino en función de las variables con los parámetros químicos. Para ello implementaremos la función lm, con la cuál pondremos la variable calidad en función de las demás. 
+
+
+```{r, warning=F}
+attach(datosvino)
+reg1<-lm(quality~., data = datosvino)
+```
+
+
+```{r}
+summary(reg1)
+```
+
+Realizando la regresión lineal múltiple, obtenemos un estadístico $R^2$ de 0.358, con lo que podemos concluir que nuestro modelo no será muy bueno a la hora de predecir la calidad del vino. 
+
+
+Para intentar mejorar esta regresión, utilizaremos la función step, cuya utilidad consiste en encontrar las variables que generan el modelo de regresión óptimo. 
+
+
+```{r}
+ regopt<-step(reg1, direction = 'both')
+```
+
+```{r}
+summary(regopt)
+```
+
+Observando el modelo generado, tenemos que se quedará con las variables chlorides, volatile.acidity, free.sulfur.dioxide, total.sulfur.dioxide, pH, sulphates y alcohol. 
+
+Sin embargo, no observamos una gran mejoría, por lo que tampoco será este un modelo que nos ayude a predecir la calidad del vino. 
+
+
+#### 4.4.2 Contrastes de hipótesis 
+
+A continuación, vamos a realizar un estudio para comprobar si la calidad está relacionada con la graduación alcohólica de los vinos y con su pH, y ver si podemos inferir que un vino tiene una mayor o peor calidad en función de estos parámetros.
+
+En primer lugar, plantearemos un contraste de hipótesis de comparación de medias de la calidad de dos poblaciones, donde en primer lugar tendremos los vinos de baja graduación alcohólica y por otro lado tendremos aquellos vinos que tendrán una graduación más elevada.
+
+
+$$
+\left\{ \begin{array}{lcc}
+             H_{0}: \mu_{bajo} = \mu_{alto}  \\
+             \\ H_{1}: \mu_{bajo} \neq \mu_{alto}
+             \end{array}
+   \right.
+$$
+
+Una vez hemos planteado el contraste de hipótesis, pasamos a implementar el test de Student's
+
+
+```{r}
+#t.test(datosalcoholbajo$quality, datosalcoholalto$quality)
+```
+Welch Two Sample t-test
+
+data:  datosalcoholbajo$quality and datosalcoholalto$quality
+t = -16.107, df = 1197, p-value < 2.2e-16
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ -0.7502629 -0.5873363
+sample estimates:
+mean of x mean of y 
+ 5.307799  5.976599 
+
+
+
+Realizando el contraste de hipótesis, rechazaremos la hipótesis nula de que la calidad media de los vinos es igual para aquellos con graduación alcohólica alta y baja. 
+
+A continuación, haremos un contraste para ver si podemos afirmar que los vinos con mayor graduación alcohólica tienen mayor calidad que los que tienen baja graduación. 
+
+
+$$
+\left\{ \begin{array}{lcc}
+             H_{0}: \mu_{bajo} \geq \mu_{alto}  \\
+             \\ H_{1}: \mu_{bajo}  < \mu_{alto}
+             \end{array}
+   \right.
+$$
+
+
+```{r}
+#t.test(datosalcoholbajo$quality, datosalcoholalto$quality, alternative ="less")
+
+```
+
+	Welch Two Sample t-test
+
+data:  datosalcoholbajo$quality and datosalcoholalto$quality
+t = -16.107, df = 1197, p-value < 2.2e-16
+alternative hypothesis: true difference in means is less than 0
+95 percent confidence interval:
+       -Inf -0.6004497
+sample estimates:
+mean of x mean of y 
+ 5.307799  5.976599 
+
+
+Se rechaza la hipótesis nula y por lo tanto podemos afirmar que la calidad de los vinos será mayor para aquellos vinos con una graduación alcohólica alta. 
+
+
+Por último, haremos lo mismo para el pH. 
+
+
+
+Plantearemos un contraste de hipótesis de comparación de medias de la calidad de dos poblaciones, donde en primer lugar tendremos los vinos con un pH bajo y por otro lado tendremos aquellos vinos que tengan un pH elevado.
+
+
+$$
+\left\{ \begin{array}{lcc}
+             H_{0}: \mu_{bajo} = \mu_{alto}  \\
+             \\ H_{1}: \mu_{bajo} \neq \mu_{alto}
+             \end{array}
+   \right.
+$$
+
+Una vez hemos planteado el contraste de hipótesis, pasamos a implementar el test de Student's
+
+
+```{r}
+# t.test(datosphbajo$quality, datosphalto$quality)
+```
+Welch Two Sample t-test
+
+data:  datosphbajo$quality and datosphalto$quality
+t = 1.9781, df = 1346.8, p-value = 0.04812
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ 0.0007317131 0.1760422957
+sample estimates:
+mean of x mean of y 
+ 5.665722  5.577335 
+
+
+
+Realizando el contraste de hipótesis, rechazaremos la hipótesis nula de que la calidad media de los vinos es igual para aquellos con graduación alcohólica alta y baja, aunque por muy poco, ya que el pvalor obtenido es de 0.04812, teniendo en cuenta que vamos a tener un nivel de significación del 0.05, tenemos que rechazar el contraste. 
+
+A continuación, haremos un contraste para ver si podemos afirmar que los vinos con un pH bajo tiene mayor calidad que los que tienen un pH alto.  
+
+
+$$
+\left\{ \begin{array}{lcc}
+             H_{0}: \mu_{bajo} \leq \mu_{alto}  \\
+             \\ H_{1}: \mu_{bajo}  > \mu_{alto}
+             \end{array}
+   \right.
+$$
+
+
+```{r}
+#t.test(datosphbajo$quality, datosphalto$quality, alternative ="greater")
+
+```
+
+	Welch Two Sample t-test
+
+data:  datosphbajo$quality and datosphalto$quality
+t = 1.9781, df = 1346.8, p-value = 0.02406
+alternative hypothesis: true difference in means is greater than 0
+95 percent confidence interval:
+ 0.01483989        Inf
+sample estimates:
+mean of x mean of y 
+ 5.665722  5.577335
+
+
+
+En este caso, tendremos que rechazar la hipótesis nula y por lo tanto podremos afirmar que los vinos con un pH bajo tienen una mayor calidad que los vinos con un pH elevado. 
+
+
+
+
+#### 4.4.3 Regresión logística
+
+
+Por último, con la variable categórica que creamos anteriormente a partir del campo calidad, vamos a implementar una regresión logística para intentar predecir la variable. 
+
+
+Para ello, utilizaremos la función glm, en la que se implementará esta técnica estadística
+
+
+
+
+
+
+```{r}
+attach(datosvinocats)
+reglog<-glm(calidadcat~fixed.acidity+volatile.acidity+citric.acid+residual.sugar+chlorides+free.sulfur.dioxide+total.sulfur.dioxide+density+pH+sulphates+alcohol, data = datosvinocats, family = "binomial")
+summary(reglog)
+```
+
+De nuevo, buscaremos el modelo óptimo a partir de la función step
+
+```{r}
+reglogopt<-step(reglog)
+```
+
+
+
+```{r}
+library(ResourceSelection)
+hoslem.test(datosvinocats$calidadcat, fitted(reglogopt))
+```
+
+Obtenemos un pvalor muy cercano a 0, por lo que tendremos que determinar que nuestro modelo no está bien
+ajustado, sin embargo este test es muy sensible a muestras grandes, como es el caso de nuestro modelo de
+estudio, por lo que tampoco tomaremos este contraste como la mejor herramienta para determinar si nuestro
+modelo es bueno o no.
+
+\bigskip
+
+
+## 5. Resolución del problema. A partir de los resultados obtenidos, ¿cuáles son las conclusiones? ¿Los resultados permiten responder al problema?
+
+Una vez terminados los análisis que hemos realizado (que son regresión lineal múltiple, regresión logística y contrastes de hipótesis), podremos sacar las siguientes conclusiones: 
+
+
+· De la regresión lineal múltiple no podemos sacar ninguna conclusión importante, ya que como hemos visto, el estadístico $R^2$ que obtenemos es muy bajo. Además se ha intentado optimizar a partir de la función step y no hemos obtenido ninguna mejoría, por lo que no nos ha aportado ninguna información
+
+
+· Con la regresión logística nos ocurre algo similar al caso anterior, ya que no obtenemos un modelo bueno con el que predecir la calidad de los vinos. De igual forma intentamos optimizarlo sin conseguir mejoría alguna
+
+· En el caso de los contrastes de hipótesis, si que hemos obtenido información relevante, ya que gracias a ellos podemos asegurar que los vinos con mayor graduación alcohólica tendrán una calidad mayor, así como que los vinos con un ph bajo también tendrán una mayor calidad. 
+
+
+
+
+
+
+## 6. Exportación de ficheros utilizados y enlace a GitHub
+
+
+```{r}
+
+# Fichero tras limpieza de datos
+write.csv(datosvino, file = "datosvino.csv")
+
+# Fichero con variables categóricas creadas
+
+write.csv(datosvinocats, file = "datosvinocats.csv")
+
+
+```
+
+
+[Enlace a GitHub]()
+
+
+## 7. Tabla de aportaciones
+
+
+```{r,echo = FALSE}
+library(knitr)
+Contribuciones <- c('Investigación previa','Redacción de las respuestas','Desarrollo del código')
+
+Firma <- c('FFP, JGF','FFP, JGF','FFP, JGF')
+
+tabla <- cbind(Contribuciones, Firma)
+kable(tabla)
+
+
+```
