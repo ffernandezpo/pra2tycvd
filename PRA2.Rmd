@@ -236,10 +236,10 @@ Sin embargo, realizando el test de Shapiro-Wilk a todas nuestras variables, no t
 Una vez hemos hecho el estudio de la homocedasticidad, lo haremos a partir de dividir la muestra en función de las variables categóricas que hemos creado. 
 
 ```{r}
-datosalcoholbajo<-datosvino[datosvino$alcoholcat=='Graduación alcohólica baja',]
-datosalcoholalto<-datosvino[datosvino$alcoholcat=='Graduación alcohólica alta',]
-datosphbajo<-datosvino[datosvino$pHcat=='pH bajo',]
-datosphalto<-datosvino[datosvino$pHcat=='pH alto',]
+datosalcoholbajo<-datosvinocats[datosvinocats$alcoholcat=='Graduación alcohólica baja',]
+datosalcoholalto<-datosvinocats[datosvinocats$alcoholcat=='Graduación alcohólica alta',]
+datosphbajo<-datosvinocats[datosvinocats$pHcat=='pH bajo',]
+datosphalto<-datosvinocats[datosvinocats$pHcat=='pH alto',]
 ```
 
 
@@ -249,38 +249,16 @@ Aunque no hayamos obtenido normalidad, pasaremos a calcular la homocedasticidad 
 library(stats)
 ```
 
-(Se dejan comentadas las funciones porque al pasar a pdF genera error, sin embargo en R si que compila correctamente la función, de la que se adjunta la salida como texto)
 
 ```{r}
 
-#var.test(datosalcoholalto$quality, datosalcoholbajo$quality)
+var.test(datosalcoholalto$quality, datosalcoholbajo$quality)
 ```
-	F test to compare two variances
-
-data:  datosalcoholalto$quality and datosalcoholbajo$quality
-F = 1.6884, num df = 640, denom df =
-717, p-value = 1.011e-11
-alternative hypothesis: true ratio of variances is not equal to 1
-95 percent confidence interval:
- 1.452482 1.964017
-sample estimates:
-ratio of variances 
-          1.688441 
+ 
 
 ```{r}
-# var.test(datosalcoholalto$pH, datosalcoholbajo$pH)
+var.test(datosalcoholalto$pH, datosalcoholbajo$pH)
 ```
-F test to compare two variances
-
-data:  datosalcoholalto$pH and datosalcoholbajo$pH
-F = 1.2013, num df = 640, denom df =
-717, p-value = 0.01695
-alternative hypothesis: true ratio of variances is not equal to 1
-95 percent confidence interval:
- 1.033406 1.397350
-sample estimates:
-ratio of variances 
-          1.201285 
 
 Como podemos observar, en ambos casos obtenemos que no se puede asumir igualdad de varianzas. 
 
@@ -343,18 +321,8 @@ Una vez hemos planteado el contraste de hipótesis, pasamos a implementar el tes
 
 
 ```{r}
-#t.test(datosalcoholbajo$quality, datosalcoholalto$quality)
+t.test(datosalcoholbajo$quality, datosalcoholalto$quality)
 ```
-Welch Two Sample t-test
-
-data:  datosalcoholbajo$quality and datosalcoholalto$quality
-t = -16.107, df = 1197, p-value < 2.2e-16
-alternative hypothesis: true difference in means is not equal to 0
-95 percent confidence interval:
- -0.7502629 -0.5873363
-sample estimates:
-mean of x mean of y 
- 5.307799  5.976599 
 
 
 
@@ -373,20 +341,10 @@ $$
 
 
 ```{r}
-#t.test(datosalcoholbajo$quality, datosalcoholalto$quality, alternative ="less")
+t.test(datosalcoholbajo$quality, datosalcoholalto$quality, alternative ="less")
 
 ```
 
-	Welch Two Sample t-test
-
-data:  datosalcoholbajo$quality and datosalcoholalto$quality
-t = -16.107, df = 1197, p-value < 2.2e-16
-alternative hypothesis: true difference in means is less than 0
-95 percent confidence interval:
-       -Inf -0.6004497
-sample estimates:
-mean of x mean of y 
- 5.307799  5.976599 
 
 
 Se rechaza la hipótesis nula y por lo tanto podemos afirmar que la calidad de los vinos será mayor para aquellos vinos con una graduación alcohólica alta. 
@@ -411,18 +369,10 @@ Una vez hemos planteado el contraste de hipótesis, pasamos a implementar el tes
 
 
 ```{r}
-# t.test(datosphbajo$quality, datosphalto$quality)
+t.test(datosphbajo$quality, datosphalto$quality)
 ```
-Welch Two Sample t-test
 
-data:  datosphbajo$quality and datosphalto$quality
-t = 1.9781, df = 1346.8, p-value = 0.04812
-alternative hypothesis: true difference in means is not equal to 0
-95 percent confidence interval:
- 0.0007317131 0.1760422957
-sample estimates:
-mean of x mean of y 
- 5.665722  5.577335 
+
 
 
 
@@ -441,20 +391,9 @@ $$
 
 
 ```{r}
-#t.test(datosphbajo$quality, datosphalto$quality, alternative ="greater")
+t.test(datosphbajo$quality, datosphalto$quality, alternative ="greater")
 
 ```
-
-	Welch Two Sample t-test
-
-data:  datosphbajo$quality and datosphalto$quality
-t = 1.9781, df = 1346.8, p-value = 0.02406
-alternative hypothesis: true difference in means is greater than 0
-95 percent confidence interval:
- 0.01483989        Inf
-sample estimates:
-mean of x mean of y 
- 5.665722  5.577335
 
 
 
